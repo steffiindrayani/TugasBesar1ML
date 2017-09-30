@@ -99,11 +99,8 @@ public class TugasBesar1ML {
         TugasBesar1ML newClassifier = new TugasBesar1ML();
         Instances trainingData = newClassifier.loadData();
         trainingData = newClassifier.removeAttribute(trainingData);
-        //trainingData = newClassifier.resample(trainingData);      
-        System.out.println(trainingData);
         //newClassifier.chooseClassifier();
         MyId3 id3 = new MyId3();
-        System.out.println(id3.countEntropy(trainingData));
         id3.buildClassifier(trainingData);
 
        

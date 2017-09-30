@@ -27,7 +27,7 @@ public class MyId3 extends AbstractClassifier {
     }
 
     public MyTree buildTree(Instances dataset, ArrayList<Integer> attributes) {
-        if (dataset.numClasses() == 1) {
+        if (isOneElement(dataset)) {
             String c = dataset.get(0).stringValue(dataset.classIndex());
             MyTree tree = new MyTree(c);
             return tree;
@@ -45,10 +45,16 @@ public class MyId3 extends AbstractClassifier {
             Instances[] split = seperateData(dataset, bestAttribute);
             attributes.remove(Integer.valueOf(bestAttribute));
             for (int i = 0; i < dataset.attribute(bestAttribute).numValues(); i++) {
-                listOfValue.add((double) i);
-                listOfString.add(dataset.attribute(bestAttribute).value(i));
-                MyTree child = buildTree(split[i], attributes);
-                listOfChild.add(child);
+                if (split[i].numInstances() == 0) {
+                    String c = mostCommonClassValue(dataset);
+                    MyTree child = new MyTree(c);
+                    listOfChild.add(child);
+                } else {
+                    MyTree child = buildTree(split[i], attributes);
+                    listOfValue.add((double) i);
+                    listOfString.add(dataset.attribute(bestAttribute).value(i));
+                    listOfChild.add(child);
+                }
             }
             tree.setListOfValue(listOfValue);
             tree.setListOfChild(listOfChild);
@@ -65,9 +71,7 @@ public class MyId3 extends AbstractClassifier {
                 bestAttribute = attributes.get(i);
                 bestGain = countInformationGain(dataset, attributes.get(i));
             }
-            System.out.println(attributes.get(i) + " " + countInformationGain(dataset, attributes.get(i)));
         }
-        System.out.println("best attribute = " + bestAttribute);
         return bestAttribute;
     }
     
@@ -116,7 +120,6 @@ public class MyId3 extends AbstractClassifier {
     }
     
     public String mostCommonClassValue(Instances dataset) {
-        System.out.println(dataset.numInstances());
         int[] countClass = new int[dataset.numClasses()];
         int[] instance = new int[dataset.numClasses()];
         for (int i = 0; i < dataset.numInstances(); i++) {
@@ -132,9 +135,29 @@ public class MyId3 extends AbstractClassifier {
             }
         }
         if (bestClass < 0) {
-           return "yes";
+           return "ERROR";
         } else {
             return dataset.get(instance[bestClass]).stringValue(dataset.classIndex());
         }
+    }
+    
+    public boolean isOneElement(Instances dataset) {
+        switch (dataset.numInstances()) {
+            case 0:
+                return false;
+            case 1:
+                return true;
+            default:
+                double currentClass = dataset.get(0).classValue();
+                int i = 0;
+                while (i < dataset.numInstances()) {
+                    if (dataset.get(i).classValue() == currentClass) {
+                        i++;
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+        } 
     }
 }
