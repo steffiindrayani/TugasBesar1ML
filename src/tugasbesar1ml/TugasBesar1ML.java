@@ -9,11 +9,9 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Scanner;
 import weka.classifiers.Evaluation;
 import weka.core.DenseInstance;
-import weka.core.Attribute;
 import weka.core.Debug.Random;
 import weka.core.Instance;
 import weka.core.Instances;
@@ -98,23 +96,23 @@ public class TugasBesar1ML {
         String classifierOption = scanner.nextLine();        
     }
     
-    public static Instances makeInstance(Instances dataset){
-        System.out.println("Input new instance ");
+    public static Instance makeInstance(Instances dataset){
+        System.out.println("Input new instance: ");
         Scanner scanner = new Scanner(System.in);
         String value = scanner.nextLine();
         String[] valueAttribute = value.split(" ");
-        ArrayList<Attribute> attributes = new ArrayList<>();
-        for (int i = 0; i < dataset.numAttributes(); i++) {
-            attributes.add(dataset.attribute(i));
-        } 
-        Instances testData = new Instances("testData", attributes, 0);
-        testData.setClassIndex(testData.numAttributes() - 1);
-        Instance inst = new DenseInstance(testData.numAttributes());
+//        ArrayList<Attribute> attributes = new ArrayList<>();
+//        for (int i = 0; i < dataset.numAttributes(); i++) {
+//            attributes.add(dataset.attribute(i));
+//        } 
+//        Instances testData = new Instances("testData", attributes, 0);
+//        testData.setClassIndex(testData.numAttributes() - 1);
+        Instance inst = new DenseInstance(dataset.numAttributes());
+        inst.setDataset(dataset);
         for (int i = 0; i < valueAttribute.length; i++) {
             inst.setValue(i, valueAttribute[i]);
         }
-        testData.add(inst);
-        return testData;
+        return inst;
     }
     
     public static void main(String[] args) throws IOException, Exception {
@@ -131,7 +129,7 @@ public class TugasBesar1ML {
         //int folds = 5;
         //Instances trainingData = newData.trainCV(folds, 0);
         //Instances testData = newData.testCV(folds, 0);
-        
+
         //Build Classifier
         MyId3 id3 = new MyId3();
         id3.buildClassifier(trainingData);
@@ -141,6 +139,11 @@ public class TugasBesar1ML {
         //eval.crossValidateModel(id3, trainingData, 10, new Random());
         eval.evaluateModel(id3, trainingData);
         System.out.println(eval.toSummaryString());
+        
+        //Classify Unseen Input Data
+        Instance newInstance = makeInstance(trainingData);
+        double cls = id3.classifyInstance(newInstance);
+        System.out.println("Classification result : " + newInstance.classAttribute().value((int) cls));
     }
     
 }
