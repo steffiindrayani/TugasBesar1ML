@@ -5,13 +5,14 @@
  */
 package tugasbesar1ml;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  *
  * @author Vitra Chandra
  */
-public class MyTree {
+public class MyTree implements Serializable {
     String attribute;
     int numberOfValue;
     ArrayList<Double> listOfValue;
