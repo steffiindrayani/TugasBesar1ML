@@ -11,6 +11,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
+import weka.classifiers.Evaluation;
+import weka.core.DenseInstance;
+import weka.core.Attribute;
+import weka.core.Debug.Random;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.filters.Filter;
 import weka.filters.supervised.instance.Resample;
@@ -93,17 +98,49 @@ public class TugasBesar1ML {
         String classifierOption = scanner.nextLine();        
     }
     
+    public static Instances makeInstance(Instances dataset){
+        System.out.println("Input new instance ");
+        Scanner scanner = new Scanner(System.in);
+        String value = scanner.nextLine();
+        String[] valueAttribute = value.split(" ");
+        ArrayList<Attribute> attributes = new ArrayList<>();
+        for (int i = 0; i < dataset.numAttributes(); i++) {
+            attributes.add(dataset.attribute(i));
+        } 
+        Instances testData = new Instances("testData", attributes, 0);
+        testData.setClassIndex(testData.numAttributes() - 1);
+        Instance inst = new DenseInstance(testData.numAttributes());
+        for (int i = 0; i < valueAttribute.length; i++) {
+            inst.setValue(i, valueAttribute[i]);
+        }
+        testData.add(inst);
+        return testData;
+    }
     
     public static void main(String[] args) throws IOException, Exception {
-        // TODO code application logic here
+        //Data Initialisation
         TugasBesar1ML newClassifier = new TugasBesar1ML();
-        Instances trainingData = newClassifier.loadData();
-        trainingData = newClassifier.removeAttribute(trainingData);
+        Instances data = newClassifier.loadData();
+        data = newClassifier.removeAttribute(data);
         //newClassifier.chooseClassifier();
+        Instances newData = new Instances(data);
+        newData.randomize(new Random());
+        
+        Instances trainingData = newData;
+        //Make training or test data
+        //int folds = 5;
+        //Instances trainingData = newData.trainCV(folds, 0);
+        //Instances testData = newData.testCV(folds, 0);
+        
+        //Build Classifier
         MyId3 id3 = new MyId3();
         id3.buildClassifier(trainingData);
-
-       
+        
+        id3.getModel().printTree("", false);
+        Evaluation eval = new Evaluation(trainingData);
+        //eval.crossValidateModel(id3, trainingData, 10, new Random());
+        eval.evaluateModel(id3, trainingData);
+        System.out.println(eval.toSummaryString());
     }
     
 }

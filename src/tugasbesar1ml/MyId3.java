@@ -7,6 +7,7 @@ package tugasbesar1ml;
 
 import java.util.ArrayList;
 import weka.classifiers.AbstractClassifier;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
 /**
@@ -14,6 +15,12 @@ import weka.core.Utils;
  * @author User
  */
 public class MyId3 extends AbstractClassifier {
+    public MyTree model;
+
+    public MyTree getModel() {
+        return this.model;
+    }
+    
     @Override
     public void buildClassifier(Instances dataset) throws Exception {
         //Delete missing value
@@ -23,7 +30,8 @@ public class MyId3 extends AbstractClassifier {
             attributeList.add(i);
         }
         MyTree id3 = buildTree(dataset, attributeList);
-        id3.printTree(" ", false);
+        //id3.printTree("", false);
+        this.model = id3;
     }
 
     public MyTree buildTree(Instances dataset, ArrayList<Integer> attributes) {
@@ -159,5 +167,54 @@ public class MyId3 extends AbstractClassifier {
                 }
                 return true;
         } 
+    }
+    
+    public String classify(Instance inst, MyTree tree) {
+        int size = inst.numAttributes();
+        String att = tree.getAttribute();
+        String c = null;
+        if (tree.isLeaf()) {
+            c = tree.getAttribute();
+        } else {
+            int index = 0;
+            for (int i = 0; i < size; i++) {
+                if (inst.attribute(i).name().equals(att)) {
+                    index = i;
+                }
+            }
+            if (!Double.isNaN(inst.value(index))) {
+                MyTree child = tree.getChildFromValue(inst.value(index));
+                c = classify(inst, child);
+            }
+        }
+        return c;
+    }
+    
+    @Override
+    public double classifyInstance(Instance instance) {
+        double cls = 0.0;
+        String c = classify(instance, this.model);
+        int size = instance.numClasses();
+        for (int i = 0; i < size; i++) {
+            String cIns = instance.attribute(instance.classIndex()).value(i);
+            if (c.equals(cIns)) {
+                cls = (double) i;
+            }
+        }
+        return cls;
+    }
+    
+    public double classifyInstances(Instances dataset, MyTree tree) {
+        int size = dataset.numInstances();
+        int successCount = 0;
+        for (int i = 0; i < size; i++) {
+            String classifiedClass = classify(dataset.get(i), tree);
+            String originalClass = dataset.get(i).stringValue(dataset.classIndex());
+            if (originalClass.equals(classifiedClass)) {
+                successCount++;
+            }
+        }
+        double accuracy = (double) successCount / (double) size * 100;
+        return accuracy;
     }
 }
