@@ -5,6 +5,7 @@
  */
 package tugasbesar1ml;
 
+import java.util.ArrayList;
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instances;
 import weka.core.Utils;
@@ -17,31 +18,56 @@ public class MyId3 extends AbstractClassifier {
     public void buildClassifier(Instances dataset) throws Exception {
         //Delete missing value
         dataset.deleteWithMissingClass();
-        
-        //Check if there are missing value attributes
+        ArrayList<Integer> attributeList = new ArrayList<>(); 
+        for (int i = 0; i < dataset.numAttributes() - 1; i++) {
+            attributeList.add(i);
+        }
+        MyTree id3 = buildTree(dataset, attributeList);
+        id3.printTree(" ", false);
     }
 
-    public void buildTree(Instances dataset, int[] attributes) {
+    public MyTree buildTree(Instances dataset, ArrayList<Integer> attributes) {
         if (dataset.numClasses() == 1) {
-            //specify one root only
-        } else if (attributes.length == 0) {
-            //mostcommonvalue
+            String c = dataset.get(0).stringValue(dataset.classIndex());
+            MyTree tree = new MyTree(c);
+            return tree;
+        } else if (attributes.isEmpty()) {
+            String c = mostCommonClassValue(dataset);
+            MyTree tree = new MyTree(c);
+            return tree;
         } else {
             //choose best attribute
-            int bestAttribute = chooseBestAttribute(dataset);
-            
+            int bestAttribute = chooseBestAttribute(dataset, attributes);
+            MyTree tree = new MyTree(dataset.attribute(bestAttribute).name());
+            ArrayList<Double> listOfValue = new ArrayList<>();
+            ArrayList<String> listOfString = new ArrayList<>();
+            ArrayList<MyTree> listOfChild = new ArrayList<>();
+            Instances[] split = seperateData(dataset, bestAttribute);
+            attributes.remove(Integer.valueOf(bestAttribute));
+            for (int i = 0; i < dataset.attribute(bestAttribute).numValues(); i++) {
+                listOfValue.add((double) i);
+                listOfString.add(dataset.attribute(bestAttribute).value(i));
+                MyTree child = buildTree(split[i], attributes);
+                listOfChild.add(child);
+            }
+            tree.setListOfValue(listOfValue);
+            tree.setListOfChild(listOfChild);
+            tree.setListOfStringValue(listOfString);
+            return tree;
         }
     }
     
-    public int chooseBestAttribute(Instances dataset) {
-        int bestAttribute = 0;
-        double bestGain = countInformationGain(dataset, 0);
-        for (int i = 1; i < dataset.numAttributes() - 1; i++) {
-            if (countInformationGain(dataset,i) > bestGain) {
-                bestAttribute = i;
-                bestGain = countInformationGain(dataset, i);
+    public int chooseBestAttribute(Instances dataset, ArrayList<Integer> attributes) {
+        int bestAttribute = -1;
+        double bestGain = -999;
+        for (int i = 0; i < attributes.size(); i++) {
+            if (countInformationGain(dataset, attributes.get(i)) > bestGain) {
+                bestAttribute = attributes.get(i);
+                bestGain = countInformationGain(dataset, attributes.get(i));
             }
+            System.out.println(attributes.get(i) + " " + countInformationGain(dataset, attributes.get(i)));
         }
+        System.out.println("best attribute = " + bestAttribute);
         return bestAttribute;
     }
     
@@ -75,8 +101,9 @@ public class MyId3 extends AbstractClassifier {
     }
     
     public Instances[] seperateData(Instances dataset, int attribute) {
-        Instances[] split = new Instances[dataset.get(attribute).numValues()];
-        for (int i = 0; i < dataset.get(attribute).numValues(); i++) {
+        int size = dataset.attribute(attribute).numValues();
+        Instances[] split = new Instances[size];
+        for (int i = 0; i < size; i++) {
             split[i] = new Instances(dataset, dataset.numInstances());
         }
         for (int i = 0; i < dataset.numInstances(); i++) {
@@ -88,19 +115,26 @@ public class MyId3 extends AbstractClassifier {
         return split;
     }
     
-    public double mostCommonClassValue(Instances dataset) {
+    public String mostCommonClassValue(Instances dataset) {
+        System.out.println(dataset.numInstances());
         int[] countClass = new int[dataset.numClasses()];
+        int[] instance = new int[dataset.numClasses()];
         for (int i = 0; i < dataset.numInstances(); i++) {
             countClass[(int) dataset.get(i).classValue()]++;
+            instance[(int) dataset.get(i).classValue()] = i;
         }
-        double bestClass = 0.0;
-        int maxClass = countClass[0];
-        for (int i = 1; i < dataset.numClasses(); i++) {
+        int bestClass = -1;
+        int maxClass = 0;
+        for (int i = 0; i < countClass.length; i++) {
             if (countClass[i] > maxClass) {
-                bestClass = (double) i;
+                bestClass = i;
                 maxClass = countClass[i];
             }
         }
-        return bestClass;
+        if (bestClass < 0) {
+           return "yes";
+        } else {
+            return dataset.get(instance[bestClass]).stringValue(dataset.classIndex());
+        }
     }
 }

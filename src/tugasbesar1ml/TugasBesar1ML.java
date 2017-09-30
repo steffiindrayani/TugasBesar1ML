@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Scanner;
 import weka.core.Instances;
 import weka.filters.Filter;
@@ -99,10 +100,13 @@ public class TugasBesar1ML {
         Instances trainingData = newClassifier.loadData();
         trainingData = newClassifier.removeAttribute(trainingData);
         //trainingData = newClassifier.resample(trainingData);      
-        //System.out.println(trainingData);
+        System.out.println(trainingData);
         //newClassifier.chooseClassifier();
         MyId3 id3 = new MyId3();
-        System.out.println(id3.mostCommonClassValue(trainingData));
+        System.out.println(id3.countEntropy(trainingData));
+        id3.buildClassifier(trainingData);
+
+       
     }
     
 }
