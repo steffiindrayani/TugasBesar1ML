@@ -16,18 +16,51 @@ import java.util.*;
  * @author raudi
  */
 public class MyC45 extends AbstractClassifier {
-    @Override
-    public void buildClassifier(Instances dataset) throws Exception {
-        //Delete missing value
-        dataset.deleteWithMissingClass();
-        ArrayList<Integer> attributeList = new ArrayList<>(); 
-        for (int i = 0; i < dataset.numAttributes() - 1; i++) {
-            attributeList.add(i);
+    
+    protected PruneableMyTree m_root;
+    protected boolean isReducedError = false;
+    
+    public void prune() {
+        if (isReducedError) {
+            double threshold = tree.classifyInstances(validationSet);
+            ArrayList<PruneableMyTree> trees = new ArrayList<>();
+            buildListOfTrees(m_root, trees);
+            double[] accuracySubTrees = new double[trees.size()];
+            double maxAccuracy = 0;
+            int maxIndexSubTrees = -1;
         }
-        MyTree id3 = buildTree(dataset, attributeList);
-        id3.printTree(" ", false);
     }
     
+    public void buildListOfTrees(PruneableMyTree tree, ArrayList<PruneableMyTree> trees) {
+        
+    }
+    // Edited
+    public void pruneErrorReduced(MyTree tree, Instances validationSet) {
+        double threshold = tree.classifyInstances(validationSet);
+        for(;;) {
+            ArrayList<MyTree> trees = new ArrayList<>();
+            double[] accuracySubTrees = new double[trees.size()];
+            double maxAccuracy = 0;
+            int maxIndexSubTrees = -1;
+            for(int i=0;i<trees.size();i++) {
+                accuracySubTrees[i] = trees.get(i).classifyInstances(validationSet);
+                if (accuracySubTrees[i] > maxAccuracy) {
+                    maxAccuracy = accuracySubTrees[i];
+                    maxIndexSubTrees = i;
+                }
+            }
+            if (maxIndexSubTrees < threshold) {
+                break;
+            }
+        }
+        
+    }
+    
+    public void pruneRuleBased(MyTree tree) {
+        
+    }
+    
+    // Edited
     public Instances handleAttributeContinuesValue(Instances instances, int attributeIdx) {
         Instances dataset = new Instances(instances);
         double gain = countEntropy(dataset);
@@ -61,8 +94,20 @@ public class MyC45 extends AbstractClassifier {
         return dataset;
     }
 
+    @Override
+    public void buildClassifier(Instances dataset) throws Exception {
+        //Delete missing value
+        dataset.deleteWithMissingClass();
+        ArrayList<Integer> attributeList = new ArrayList<>(); 
+        for (int i = 0; i < dataset.numAttributes() - 1; i++) {
+            attributeList.add(i);
+        }
+        MyTree id3 = buildTree(dataset, attributeList);
+        id3.printTree(" ", false);
+    }
+
     public MyTree buildTree(Instances dataset, ArrayList<Integer> attributes) {
-        if (dataset.numClasses() == 1) {
+        if (isOneElement(dataset)) {
             String c = dataset.get(0).stringValue(dataset.classIndex());
             MyTree tree = new MyTree(c);
             return tree;
@@ -80,10 +125,16 @@ public class MyC45 extends AbstractClassifier {
             Instances[] split = seperateData(dataset, bestAttribute);
             attributes.remove(Integer.valueOf(bestAttribute));
             for (int i = 0; i < dataset.attribute(bestAttribute).numValues(); i++) {
-                listOfValue.add((double) i);
-                listOfString.add(dataset.attribute(bestAttribute).value(i));
-                MyTree child = buildTree(split[i], attributes);
-                listOfChild.add(child);
+                if (split[i].numInstances() == 0) {
+                    String c = mostCommonClassValue(dataset);
+                    MyTree child = new MyTree(c);
+                    listOfChild.add(child);
+                } else {
+                    MyTree child = buildTree(split[i], attributes);
+                    listOfValue.add((double) i);
+                    listOfString.add(dataset.attribute(bestAttribute).value(i));
+                    listOfChild.add(child);
+                }
             }
             tree.setListOfValue(listOfValue);
             tree.setListOfChild(listOfChild);
@@ -92,29 +143,79 @@ public class MyC45 extends AbstractClassifier {
         }
     }
     
+    public void handleMissingValue() {
+        
+    }
+            
+    // Edited
     public int chooseBestAttribute(Instances dataset, ArrayList<Integer> attributes) {
         int bestAttribute = -1;
-        double bestGain = -999;
+        double bestGainRatio = -999;
         for (int i = 0; i < attributes.size(); i++) {
-            if (countInformationGain(dataset, attributes.get(i)) > bestGain) {
+            if (countGainRatio(dataset, attributes.get(i)) > bestGainRatio) {
                 bestAttribute = attributes.get(i);
-                bestGain = countInformationGain(dataset, attributes.get(i));
+                bestGainRatio = countInformationGain(dataset, attributes.get(i));
             }
-            System.out.println(attributes.get(i) + " " + countInformationGain(dataset, attributes.get(i)));
         }
-        System.out.println("best attribute = " + bestAttribute);
         return bestAttribute;
+    }
+    
+    // Edited
+    public double countGainRatio(Instances dataset, int attribute) {
+        double informationGain = countInformationGain(dataset, attribute);
+        double splitInformation = countSplitInformation(dataset, attribute);
+        return informationGain/splitInformation;
+    }
+    
+    // Edited
+    public double countSplitInformation(Instances dataset, int attribute) {
+        double splitInformation = 0;
+        Instances[] split = seperateData(dataset, attribute);
+        for (int i = 0; i < dataset.attribute(attribute).numValues(); i++) {
+            if (split[i].numInstances() > 0) {
+                splitInformation -= (double) split[i].numInstances() / (double) dataset.numInstances() * Utils.log2((double) split[i].numInstances() / (double) dataset.numInstances());
+            }
+        }
+        return splitInformation;
     }
     
     public double countInformationGain(Instances dataset, int attribute) {
         double gain = countEntropy(dataset);
         Instances[] split = seperateData(dataset, attribute);
+        double nMissingValue = split[split.length-1].numInstances();
+        double[] fraction = new double[split.length-2];
+        for (int i=0;i<fraction.length;i++) {
+            fraction[i] = nMissingValue*split[i].numInstances()/(dataset.numInstances()-nMissingValue);
+        }
         for (int i = 0; i < dataset.attribute(attribute).numValues(); i++) {
             if (split[i].numInstances() > 0) {
-                gain -= (double) split[i].numInstances() / (double) dataset.numInstances() * countEntropy(split[i]);
+                gain -= (double) (split[i].numInstances()+fraction[i]) / (double) dataset.numInstances() * countEntropyC45(split[i],fraction[i],split[split.length-1]);
             }
         }
         return gain;
+    }
+    
+    public double countEntropyC45(Instances dataset, double fraction, Instances missingValueDataset) {
+        double entropy = 0;
+        
+        //Count each class value in dataset
+        int[] countClass = new int[dataset.numClasses()];
+        for (int i = 0; i < dataset.numInstances(); i++) {
+            countClass[(int) dataset.get(i).classValue()]++;
+        }
+        
+        int[] countClassMissingValue = new int[missingValueDataset.numClasses()];
+        for (int i = 0; i < missingValueDataset.numInstances(); i++) {
+            countClassMissingValue[(int) missingValueDataset.get(i).classValue()]++;
+        }
+                
+        //Count entropy
+        for (int i = 0; i < dataset.numClasses(); i++) {
+            if (countClass[i] > 0) {
+                entropy -= (countClass[i]+fraction*countClassMissingValue[i])/ (double) (dataset.numInstances()+missingValueDataset.numInstances()*fraction) * Utils.log2((countClass[i]+fraction*countClassMissingValue[i])/ (double) (dataset.numInstances()+missingValueDataset.numInstances()*fraction));
+            }
+        }
+        return entropy;
     }
     
     public double countEntropy(Instances dataset) {
@@ -135,14 +236,20 @@ public class MyC45 extends AbstractClassifier {
         return entropy;
     }
     
+    // Edited
     public Instances[] seperateData(Instances dataset, int attribute) {
-        int size = dataset.attribute(attribute).numValues();
+        int size = dataset.attribute(attribute).numValues()+1;
         Instances[] split = new Instances[size];
         for (int i = 0; i < size; i++) {
             split[i] = new Instances(dataset, dataset.numInstances());
         }
         for (int i = 0; i < dataset.numInstances(); i++) {
-            split[(int) dataset.get(i).value(attribute)].add(dataset.get(i));
+            // Ragu
+            if (dataset.get(i).value(attribute) == -1) {
+                split[size-1].add(dataset.get(i));
+            } else {  
+                split[(int) dataset.get(i).value(attribute)].add(dataset.get(i));
+            }
         }
         for (Instances split1 : split) {
             split1.compactify();
@@ -151,7 +258,6 @@ public class MyC45 extends AbstractClassifier {
     }
     
     public String mostCommonClassValue(Instances dataset) {
-        System.out.println(dataset.numInstances());
         int[] countClass = new int[dataset.numClasses()];
         int[] instance = new int[dataset.numClasses()];
         for (int i = 0; i < dataset.numInstances(); i++) {
@@ -167,9 +273,29 @@ public class MyC45 extends AbstractClassifier {
             }
         }
         if (bestClass < 0) {
-           return "yes";
+           return "ERROR";
         } else {
             return dataset.get(instance[bestClass]).stringValue(dataset.classIndex());
         }
+    }
+    
+    public boolean isOneElement(Instances dataset) {
+        switch (dataset.numInstances()) {
+            case 0:
+                return false;
+            case 1:
+                return true;
+            default:
+                double currentClass = dataset.get(0).classValue();
+                int i = 0;
+                while (i < dataset.numInstances()) {
+                    if (dataset.get(i).classValue() == currentClass) {
+                        i++;
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+        } 
     }
 }
