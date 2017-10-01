@@ -12,7 +12,6 @@ import weka.core.Utils;
 import java.util.*;
 import weka.core.Attribute;
 import weka.core.Instance;
-import org.apache.commons.math3.distribution.NormalDistribution;
 
 /**
  *
@@ -66,7 +65,7 @@ public class MyC45 extends AbstractClassifier {
                 LinkedHashMap<String,Double> rule = new LinkedHashMap<String,Double>(priorRule);
                 rule.put(tree.getAttribute(),(double)i);
                 System.out.println(tree.getAttribute()+" "+i);
-                m_root.printTree("",false);
+                //m_root.printTree("",false);
                 treeToRules(tree.getChildFromValue(tree.getValueIndex(i)),rule);
             }
         }
@@ -170,9 +169,9 @@ public class MyC45 extends AbstractClassifier {
     }
     
     public double calculateErrorRulePruning(int[] result) {
-        double alpha = 1.0 - confidence;
-        NormalDistribution distribution = new NormalDistribution(mean, standardDev);
-        double z = distribution.inverseCumulativeProbability(alpha);
+        double zalphaover2 = 1.15;
+        
+        
         
         return (double)result[0]/(double)(result[0]+result[1]);
     }
@@ -312,6 +311,7 @@ public class MyC45 extends AbstractClassifier {
                         }
                     }
                     listOfChild.add(child);
+                    listOfValue.add((double) i);
                 } else {
                     PruneableMyTree child = buildTree(split[i], attributes);
                     listOfValue.add((double) i);
@@ -333,9 +333,7 @@ public class MyC45 extends AbstractClassifier {
     // Edited
     public int chooseBestAttribute(Instances dataset, ArrayList<Integer> attributes) {
         int bestAttribute = -1;
-        double bestGainRatio = -999;
-        
-            
+        double bestGainRatio = -999;         
         for (int i = 0; i < attributes.size(); i++) {
             if (attributes.size()==4) {
                 System.out.println(dataset);
@@ -347,7 +345,6 @@ public class MyC45 extends AbstractClassifier {
                 bestGainRatio = countGainRatio(dataset, attributes.get(i));
             }
         }
-        System.out.println(attributes.size());
         return bestAttribute;
     }
     
@@ -355,7 +352,11 @@ public class MyC45 extends AbstractClassifier {
     public double countGainRatio(Instances dataset, int attribute) {
         double informationGain = countInformationGain(dataset, attribute);
         double splitInformation = countSplitInformation(dataset, attribute);
-        return informationGain/splitInformation;
+        if (splitInformation <= 0) {
+            return 0;
+        } else {
+           return informationGain/splitInformation;
+        }
     }
     
     // Edited
@@ -408,7 +409,6 @@ public class MyC45 extends AbstractClassifier {
             split[i] = new Instances(dataset, dataset.numInstances());
         }
         for (int i = 0; i < dataset.numInstances(); i++) {
-            // Ragu
             if (Double.isNaN(dataset.get(i).value(attribute))) {
                 split[size-1].add(dataset.get(i));
             } else {  
@@ -418,7 +418,11 @@ public class MyC45 extends AbstractClassifier {
         double[] weight = new double[size-1];
         
         for (int i=0;i<weight.length;i++) {
-            weight[i] = (double)split[i].numInstances()/(dataset.numInstances()-split[size-1].numInstances());
+            if (dataset.numInstances() == split[size-1].numInstances()) {
+               weight[i] = (double) 1 / (double) (size - 1);
+            } else {
+               weight[i] = (double)split[i].numInstances()/(double) (dataset.numInstances()-split[size-1].numInstances());
+            }
         }
         
 //        if (!split[size-1].isEmpty()) {
@@ -432,6 +436,9 @@ public class MyC45 extends AbstractClassifier {
                 split[i].add(split[size-1].instance(j));
             }
         }
+        
+       
+        
 //        if (!split[size-1].isEmpty()) {
 //            System.out.println("Sesudah\n Attribute "+attribute+"\n"+split[0]);
 //            
