@@ -19,14 +19,31 @@ public class PruneableMyTree {
     double idxClass;
     ArrayList<String> listOfStringValue;
     ArrayList<PruneableMyTree> listOfChild;
+    ArrayList<Integer> listOfNumClass;
     int correctClass;
-    int falseClass;
+    int wrongClass;
 //    ArrayList<Double> listOfAttributeWeight;
 //    ArrayList<Double> listOfClassWeight;
 //    ArrayList<Double> listOfClassPerAttributeWeight;
 //    Instances localDataset;
     ArrayList<Double> listOfValue;
    
+    public void setCorrectClass(int c) {
+        correctClass = c;
+    }
+    public int getCorrectClass() {
+        return correctClass;
+    }
+    
+    public void setAttribute(String s) {
+        attribute = s;
+    }
+    public void setWrongClass(int c) {
+        wrongClass = c;
+    }
+    public int getWrongClass() {
+        return wrongClass;
+    }
     
     public PruneableMyTree(String attribute) {
         this.pruned = false;
@@ -34,13 +51,26 @@ public class PruneableMyTree {
         this.listOfStringValue = new ArrayList<>();
         this.listOfValue = new ArrayList<>();
         this.listOfChild = new ArrayList<>();
+        this.listOfNumClass = new ArrayList<>();
         this.idxClass = -1;
-        this.correctClass = -1;
-        this.falseClass = -1;
+        this.correctClass = 0;
+        this.wrongClass = 0;
     }
     
     public void setIdxClass(double idx) {
         this.idxClass = idx;
+    }
+    
+    public void setListOfNumClass(ArrayList<Integer> s) {
+        listOfNumClass = s;
+    }
+    
+    public void setListOfNumClassValue(int idx, int val) {
+        listOfNumClass.set(idx, val);
+    }
+    
+    public ArrayList<Integer> getListOfNumClass() {
+        return listOfNumClass;
     }
     
     public boolean isPruned() {
