@@ -61,7 +61,11 @@ public class PruneableMyTree {
         this.idxClass = idx;
     }
     
-    public void setListOfNumClass(int idx, int val) {
+    public void setListOfNumClass(ArrayList<Integer> s) {
+        listOfNumClass = s;
+    }
+    
+    public void setListOfNumClassValue(int idx, int val) {
         listOfNumClass.set(idx, val);
     }
     

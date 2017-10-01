@@ -154,7 +154,11 @@ public class TugasBesar1ML {
         //Build Classifier
         MyC45 C45 = new MyC45();
         C45.buildClassifier(trainingData);
-        
+        for(int i=0;i<trainingData.numAttributes();i++) {
+            if (trainingData.attribute(i).isNumeric()) {
+                trainingData = C45.handleAttributeContinuesValue(trainingData,i);
+            }
+        }
         //C45.getModel().printTree("", false);
         Evaluation eval = new Evaluation(trainingData);
         //eval.crossValidateModel(C45, trainingData, 10, new Random());

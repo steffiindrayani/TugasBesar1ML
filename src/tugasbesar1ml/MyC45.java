@@ -12,9 +12,6 @@ import weka.core.Utils;
 import java.util.*;
 import weka.core.Attribute;
 import weka.core.Instance;
-import weka.filters.unsupervised.instance.RemovePercentage;
-//import org.apache.commons.math3.distribution.NormalDistribution;
-
 /**
  *
  * @author raudi
@@ -22,7 +19,7 @@ import weka.filters.unsupervised.instance.RemovePercentage;
 public class MyC45 extends AbstractClassifier {
     
     protected PruneableMyTree m_root;
-    protected boolean isReducedError = true;
+    protected boolean isReducedError = false;
     protected ArrayList< LinkedHashMap<String,Double> > listOfRules = new ArrayList<>();
     protected ArrayList<Double> rulesError = new ArrayList<>();
     protected double confidence;
@@ -84,11 +81,11 @@ public class MyC45 extends AbstractClassifier {
     }
     
     public double calculateErrorLeaf(PruneableMyTree tree) {
-        return 0;
+        double zalphaover2 = 1.15;
+        double p = (double)tree.getWrongClass()/(double)(tree.getWrongClass()+tree.getCorrectClass());
+        return (tree.getWrongClass()+tree.getCorrectClass())*(p + zalphaover2*Math.sqrt(p*(1-p)/(tree.getWrongClass()+tree.getCorrectClass())));
     }
-    public void calculateValidationSet(Instances validationSet) {
-        
-    }
+    
     
     // 0 artinya salah nebak, 1 artinya bener nebak, 2 artinya ga bisa ditebak
     public String classifyInstanceForReducedPruning(Instance instance, PruneableMyTree tree) {
@@ -104,7 +101,7 @@ public class MyC45 extends AbstractClassifier {
                     cls = (double) i;
                 }
             }
-            tree.setListOfNumClass((int)cls,tree.getListOfNumClass().get((int)cls)+1);
+            tree.setListOfNumClassValue((int)cls,tree.getListOfNumClass().get((int)cls)+1);
             if (cls != instance.classValue()) {
                 tree.setWrongClass(tree.getWrongClass()+1);
             } else {
@@ -127,7 +124,7 @@ public class MyC45 extends AbstractClassifier {
                         cls = (double) i;
                     }
                 }
-                tree.setListOfNumClass((int)cls,tree.getListOfNumClass().get((int)cls)+1);
+                tree.setListOfNumClassValue((int)cls,tree.getListOfNumClass().get((int)cls)+1);
                 if (cls != instance.classValue()) {
                     tree.setWrongClass(tree.getWrongClass()+1);
                 } else {
@@ -161,9 +158,9 @@ public class MyC45 extends AbstractClassifier {
             for(int i=0;i<tree.getListOfValue().size();i++){
                 LinkedHashMap<String,Double> rule = new LinkedHashMap<String,Double>(priorRule);
                 rule.put(tree.getAttribute(),(double)i);
-                System.out.println(tree.getAttribute()+" "+i);
-                m_root.printTree("",false);
-                treeToRules(tree.getListOfChild().get(tree.getValueIndex(i)),rule);
+                
+                //m_root.printTree("",false);
+                treeToRules(tree.getChildFromValue(tree.getValueIndex(i)),rule);
             }
         }
     }
@@ -257,7 +254,6 @@ public class MyC45 extends AbstractClassifier {
             LinkedHashMap<String,Double> rule = new LinkedHashMap<String,Double>(listOfRules.get(i));
             for(Map.Entry r:rule.entrySet()){
                 if (r.getKey().equals("class")) {
-                    //System.out.println(r.getValue());
                     return instance.classAttribute().value((int)(double)r.getValue());
                 }
                 int index = -1;
@@ -265,10 +261,6 @@ public class MyC45 extends AbstractClassifier {
                     if (instance.attribute(j).name().equals(r.getKey())) {
                         index = j;
                     }
-                }
-                if (index == -1) {
-                    System.out.println("Error at" +r.getKey());
-                
                 }
                 if ((double)r.getValue() != instance.value(index)) {
                     break;
@@ -280,34 +272,29 @@ public class MyC45 extends AbstractClassifier {
     }
     
     public double calculateErrorRulePruning(int[] result) {
-        double alpha = 1.0 - confidence;
-        //NormalDistribution distribution = new NormalDistribution(mean, standardDev);
-        //double z = distribution.inverseCumulativeProbability(alpha);
-        
-        return (double)result[0]/(double)(result[0]+result[1]);
+        double zalphaover2 = 1.15;
+        double p = (double)result[0]/(double)(result[0]+result[1]);
+        return (result[0]+result[1])*(p + zalphaover2*Math.sqrt(p*(1-p)/(result[0]+result[1])));
     }
     
-    public void ruleToTree(PruneableMyTree tree) {
-        for(int i=0;i<this.listOfRules.size();i++) {
-            LinkedHashMap<String,Double> rule = this.listOfRules.get(i);
-            for(Map.Entry r:rule.entrySet()){
-                if (tree.getAttribute() == (String) r.getKey()) {
-                    
-                } else {
-                    
-                }
-                PruneableMyTree newTree = new PruneableMyTree((String) r.getKey());
-                ArrayList<Double> listOfValue = new ArrayList<>();
-                ArrayList<PruneableMyTree> listOfChild = new ArrayList<>();
-                listOfValue.add((Double) r.getValue());
-                PruneableMyTree child = new PruneableMyTree("asd");
-                listOfChild.add(child);
-                System.out.println(r.getKey()+" "+r.getValue());  
-            }
-            
-            
-        }
-    }
+//    public void ruleToTree(PruneableMyTree tree) {
+//        for(int i=0;i<this.listOfRules.size();i++) {
+//            LinkedHashMap<String,Double> rule = this.listOfRules.get(i);
+//            for(Map.Entry r:rule.entrySet()){
+//                if (tree.getAttribute() == (String) r.getKey()) {
+//                    
+//                } else {
+//                    
+//                }
+//                PruneableMyTree newTree = new PruneableMyTree((String) r.getKey());
+//                ArrayList<Double> listOfValue = new ArrayList<>();
+//                ArrayList<PruneableMyTree> listOfChild = new ArrayList<>();
+//                listOfValue.add((Double) r.getValue());
+//                PruneableMyTree child = new PruneableMyTree("asd");
+//                listOfChild.add(child);
+//            }
+//        }
+//    }
     
     // Edited
     public Instances handleAttributeContinuesValue(Instances instances, int attributeIdx) {
@@ -324,7 +311,6 @@ public class MyC45 extends AbstractClassifier {
                 currentClassValue = (int)dataset.instance(i).classValue();
             }
 	}
-        System.out.println(candidateIdx.size());
         Collections.shuffle(candidateIdx);
         for (int i=0; i< Math.min(candidateIdx.size(),10); i++) {
             double tempGain = gain;
@@ -382,11 +368,11 @@ public class MyC45 extends AbstractClassifier {
             System.out.println(validationSet);
             
             m_root = buildTree(dataset, attributeList);
-            prune(dataset);
+            prune(dataset,m_root);
             m_root.printTree(" ", false);
         } else {
             m_root = buildTree(dataset, attributeList);
-            prune(dataset);
+            prune(dataset,m_root);
             for(int i=0;i<listOfRules.size();i++) {
                 System.out.println(listOfRules.get(i));
             }
@@ -416,7 +402,6 @@ public class MyC45 extends AbstractClassifier {
             
             //choose best attribute
             int bestAttribute = chooseBestAttribute(dataset, attributes);
-            System.out.println(bestAttribute);
             PruneableMyTree tree = new PruneableMyTree(dataset.attribute(bestAttribute).name());
             ArrayList<Double> listOfValue = new ArrayList<>();
             ArrayList<String> listOfString = new ArrayList<>();
@@ -435,8 +420,8 @@ public class MyC45 extends AbstractClassifier {
                             child.setIdxClass(i);
                         }
                     }
-                    listOfValue.add((double) i);
                     listOfChild.add(child);
+                    listOfValue.add((double) i);
                 } else {
                     PruneableMyTree child = buildTree(split[i], attributes);
                     listOfValue.add((double) i);
@@ -462,30 +447,26 @@ public class MyC45 extends AbstractClassifier {
     // Edited
     public int chooseBestAttribute(Instances dataset, ArrayList<Integer> attributes) {
         int bestAttribute = -1;
-        double bestGainRatio = -999;
-        
-            
+        double bestGainRatio = -999;         
         for (int i = 0; i < attributes.size(); i++) {
-            if (attributes.size()==16) {
-                System.out.println(countGainRatio(dataset, attributes.get(i)));
-                System.out.println(dataset.attribute(i).name());
-            }
             if (countGainRatio(dataset, attributes.get(i)) > bestGainRatio) {
                 bestAttribute = attributes.get(i);
                 bestGainRatio = countGainRatio(dataset, attributes.get(i));
             }
         }
-        System.out.println(attributes.size());
         return bestAttribute;
     }
     
     // Edited
     public double countGainRatio(Instances dataset, int attribute) {
         double informationGain = countInformationGain(dataset, attribute);
-        System.out.println("IG "+informationGain);
         double splitInformation = countSplitInformation(dataset, attribute);
-        System.out.println("SI "+splitInformation);
-        return informationGain/splitInformation;
+
+        if (splitInformation <= 0) {
+            return 0;
+        } else {
+           return informationGain/splitInformation;
+        }
     }
     
     // Edited
@@ -504,9 +485,6 @@ public class MyC45 extends AbstractClassifier {
         double gain = countEntropy(dataset);
         Instances[] split = seperateData(dataset, attribute);
         for (int i = 0; i < dataset.attribute(attribute).numValues(); i++) {
-            System.out.println("SPLIT "+i+" "+split[i].size());
-            System.out.println("WEIGHT "+i+" "+split[i].sumOfWeights());
-            
             if (split[i].sumOfWeights() > 0) {
                 gain -= (double) split[i].sumOfWeights() / (double) dataset.sumOfWeights() * countEntropy(split[i]);
             }
@@ -541,7 +519,6 @@ public class MyC45 extends AbstractClassifier {
             split[i] = new Instances(dataset, dataset.numInstances());
         }
         for (int i = 0; i < dataset.numInstances(); i++) {
-            // Ragu
             if (Double.isNaN(dataset.get(i).value(attribute))) {
                 split[size-1].add(dataset.get(i));
             } else {  
@@ -551,7 +528,11 @@ public class MyC45 extends AbstractClassifier {
         double[] weight = new double[size-1];
         
         for (int i=0;i<weight.length;i++) {
-            weight[i] = (double)split[i].numInstances()/(dataset.numInstances()-split[size-1].numInstances());
+            if (dataset.numInstances() == split[size-1].numInstances()) {
+               weight[i] = (double) 1 / (double) (size - 1);
+            } else {
+               weight[i] = (double)split[i].numInstances()/(double) (dataset.numInstances()-split[size-1].numInstances());
+            }
         }
         
 //        if (!split[size-1].isEmpty()) {
@@ -565,6 +546,9 @@ public class MyC45 extends AbstractClassifier {
                 split[i].add(split[size-1].instance(j));
             }
         }
+        
+       
+        
 //        if (!split[size-1].isEmpty()) {
 //            System.out.println("Sesudah\n Attribute "+attribute+"\n"+split[0]);
 //            
