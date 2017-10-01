@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.SerializationHelper;
 import weka.core.Utils;
 /**
  *
@@ -19,6 +20,10 @@ public class MyId3 extends AbstractClassifier {
 
     public MyTree getModel() {
         return this.model;
+    }
+
+    public void setModel(MyTree model) {
+        this.model = model;
     }
     
     @Override
@@ -217,4 +222,24 @@ public class MyId3 extends AbstractClassifier {
         double accuracy = (double) successCount / (double) size * 100;
         return accuracy;
     }
+    
+    public void saveModel(String file) { 
+	try { 
+		SerializationHelper.write(file + ".model", this); 
+		System.out.println("Save file successful."); 
+	} catch (Exception e) { 
+		System.out.println("Save file failed."); 
+	} 
+} 
+
+    public MyId3 loadModel(String file) { 
+	MyId3 id3 = new MyId3(); 
+	try { 
+            id3 = (MyId3) SerializationHelper.read(file + ".model"); 
+            return id3; 
+	} catch(Exception e) { 
+		System.out.println("Load file failed."); 
+	} 
+	return id3; 
+}
 }
