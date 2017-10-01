@@ -12,7 +12,8 @@ import weka.core.Utils;
 import java.util.*;
 import weka.core.Attribute;
 import weka.core.Instance;
-import org.apache.commons.math3.distribution.NormalDistribution;
+import weka.filters.unsupervised.instance.RemovePercentage;
+//import org.apache.commons.math3.distribution.NormalDistribution;
 
 /**
  *
@@ -21,7 +22,7 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 public class MyC45 extends AbstractClassifier {
     
     protected PruneableMyTree m_root;
-    protected boolean isReducedError = false;
+    protected boolean isReducedError = true;
     protected ArrayList< LinkedHashMap<String,Double> > listOfRules = new ArrayList<>();
     protected ArrayList<Double> rulesError = new ArrayList<>();
     protected double confidence;
@@ -30,14 +31,33 @@ public class MyC45 extends AbstractClassifier {
         return m_root;
     }
     
-    public void prune(Instances dataset) {
+    public void pruneTree(Instances dataset, PruneableMyTree tree) {
+        if (!tree.isLeaf()) {
+            for(int i=0;i<tree.getListOfChild().size();i++) {
+                pruneTree(dataset, tree.getListOfChild().get(i));
+            }
+            if (calculateErrorTree(tree) > calculateErrorLeaf(tree)) {
+                tree.setListOfChild(null);
+                tree.setListOfStringValue(null);
+                tree.setListOfValue(null);
+                tree.setNumberOfValue(0);
+                int maks = 0;
+                int maksIdx = -1;
+                for(int i=0;i<tree.getListOfNumClass().size();i++) {
+                    if (tree.getListOfNumClass().get(i) > maks) {
+                        maks = tree.getListOfNumClass().get(i);
+                        maksIdx = i;
+                    }
+                }
+                tree.setAttribute(dataset.classAttribute().value(maksIdx));
+            }
+        }
+    }
+    
+    public void prune(Instances dataset, PruneableMyTree tree) {
         if (isReducedError) {
-//            double threshold = tree.classifyInstances(validationSet);
-//            ArrayList<PruneableMyTree> trees = new ArrayList<>();
-//            buildListOfTrees(m_root, trees);
-//            double[] accuracySubTrees = new double[trees.size()];
-//            double maxAccuracy = 0;
-//            int maxIndexSubTrees = -1;
+            classifyInstancesForReducedPruning(dataset,tree);
+            pruneTree(dataset, tree);
         } else {
             LinkedHashMap<String,Double> emptyRule = new LinkedHashMap<>();
             treeToRules(m_root,emptyRule);
@@ -49,6 +69,82 @@ public class MyC45 extends AbstractClassifier {
             
             System.out.println("Sesudah Pruning");
         }
+    }
+    
+    public double calculateErrorTree(PruneableMyTree tree) {
+        double treeError = 0;
+        if (tree.isLeaf()) {
+            return calculateErrorLeaf(tree);
+        } else {
+            for(int i=0;i<m_root.getListOfChild().size();i++) {
+                treeError += calculateErrorLeaf(m_root.getListOfChild().get(i));
+            } 
+        }
+        return treeError;
+    }
+    
+    public double calculateErrorLeaf(PruneableMyTree tree) {
+        return 0;
+    }
+    public void calculateValidationSet(Instances validationSet) {
+        
+    }
+    
+    // 0 artinya salah nebak, 1 artinya bener nebak, 2 artinya ga bisa ditebak
+    public String classifyInstanceForReducedPruning(Instance instance, PruneableMyTree tree) {
+        int size = instance.numAttributes();
+        String att = tree.getAttribute();
+        String c = null;
+        if (tree.isLeaf()) {
+            c = tree.getAttribute();
+            double cls = -1;
+            for (int i = 0; i < instance.numClasses(); i++) {
+                String cIns = instance.attribute(instance.classIndex()).value(i);
+                if (c.equals(cIns)) {
+                    cls = (double) i;
+                }
+            }
+            tree.setListOfNumClass((int)cls,tree.getListOfNumClass().get((int)cls)+1);
+            if (cls != instance.classValue()) {
+                tree.setWrongClass(tree.getWrongClass()+1);
+            } else {
+                tree.setCorrectClass(tree.getCorrectClass()+1);
+            }
+        } else {
+            int index = 0;
+            for (int i = 0; i < size; i++) {
+                if (instance.attribute(i).name().equals(att)) {
+                    index = i;
+                }
+            }
+            if (!Double.isNaN(instance.value(index))) {
+                PruneableMyTree child = tree.getChildFromValue(instance.value(index));
+                c = classifyInstanceForReducedPruning(instance, child);
+                double cls = -1;
+                for (int i = 0; i < instance.numClasses(); i++) {
+                    String cIns = instance.attribute(instance.classIndex()).value(i);
+                    if (c.equals(cIns)) {
+                        cls = (double) i;
+                    }
+                }
+                tree.setListOfNumClass((int)cls,tree.getListOfNumClass().get((int)cls)+1);
+                if (cls != instance.classValue()) {
+                    tree.setWrongClass(tree.getWrongClass()+1);
+                } else {
+                    tree.setCorrectClass(tree.getCorrectClass()+1);
+                }
+            }
+        }
+        return c;
+        // gabakal masuk juga
+    }
+    
+    public void classifyInstancesForReducedPruning(Instances instances, PruneableMyTree tree) {
+        
+        for(int i=0;i<instances.numInstances();i++) {
+            classifyInstanceForReducedPruning(instances.instance(i),tree);
+        }
+        
     }
     
     public void treeToRules(PruneableMyTree tree, LinkedHashMap<String,Double> priorRule) {
@@ -67,7 +163,7 @@ public class MyC45 extends AbstractClassifier {
                 rule.put(tree.getAttribute(),(double)i);
                 System.out.println(tree.getAttribute()+" "+i);
                 m_root.printTree("",false);
-                treeToRules(tree.getChildFromValue(tree.getValueIndex(i)),rule);
+                treeToRules(tree.getListOfChild().get(tree.getValueIndex(i)),rule);
             }
         }
     }
@@ -138,6 +234,20 @@ public class MyC45 extends AbstractClassifier {
             this.listOfRules.set(i, rule);
             this.rulesError.add(priorError);
         }
+        for(int i=0;i<rulesError.size();i++) {
+            double min = 99999999;
+            int idx = -1;
+            for(int j=i;j<rulesError.size();j++) {
+                if (rulesError.get(j)<min) {
+                    min = rulesError.get(j);
+                    idx = j;
+                }
+            }
+            Collections.swap(listOfRules, i, idx);
+            Collections.swap(rulesError, i, idx);
+        }
+        System.out.println(listOfRules);
+        System.out.println(rulesError);
         
     }
     
@@ -171,8 +281,8 @@ public class MyC45 extends AbstractClassifier {
     
     public double calculateErrorRulePruning(int[] result) {
         double alpha = 1.0 - confidence;
-        NormalDistribution distribution = new NormalDistribution(mean, standardDev);
-        double z = distribution.inverseCumulativeProbability(alpha);
+        //NormalDistribution distribution = new NormalDistribution(mean, standardDev);
+        //double z = distribution.inverseCumulativeProbability(alpha);
         
         return (double)result[0]/(double)(result[0]+result[1]);
     }
@@ -253,12 +363,24 @@ public class MyC45 extends AbstractClassifier {
                 dataset = handleAttributeContinuesValue(dataset,i);
             }
         }
+        for(int i=0;i<dataset.numInstances();i++) {
+            dataset.instance(i).setWeight(1);
+        }
         ArrayList<Integer> attributeList = new ArrayList<>(); 
         for (int i = 0; i < dataset.numAttributes() - 1; i++) {
             attributeList.add(i);
         }
         if (isReducedError) {
             //splitData
+            Random rand = new Random(1);   // create seeded number generator
+            Instances randData = new Instances(dataset);   // create copy of original data
+            System.out.println(randData.size());
+            randData.randomize(rand);         // randomize data with number generator
+            Instances train = randData.trainCV(2, 1);
+            Instances validationSet = randData.testCV(2, 1);
+            System.out.println(train);
+            System.out.println(validationSet);
+            
             m_root = buildTree(dataset, attributeList);
             prune(dataset);
             m_root.printTree(" ", false);
@@ -294,10 +416,12 @@ public class MyC45 extends AbstractClassifier {
             
             //choose best attribute
             int bestAttribute = chooseBestAttribute(dataset, attributes);
+            System.out.println(bestAttribute);
             PruneableMyTree tree = new PruneableMyTree(dataset.attribute(bestAttribute).name());
             ArrayList<Double> listOfValue = new ArrayList<>();
             ArrayList<String> listOfString = new ArrayList<>();
             ArrayList<PruneableMyTree> listOfChild = new ArrayList<>();
+            ArrayList<Integer> listOfNumClass = new ArrayList<>();
             Instances[] split = seperateData(dataset, bestAttribute);
             attributes.remove(Integer.valueOf(bestAttribute));
             for (int i = 0; i < dataset.attribute(bestAttribute).numValues(); i++) {
@@ -311,6 +435,7 @@ public class MyC45 extends AbstractClassifier {
                             child.setIdxClass(i);
                         }
                     }
+                    listOfValue.add((double) i);
                     listOfChild.add(child);
                 } else {
                     PruneableMyTree child = buildTree(split[i], attributes);
@@ -319,6 +444,10 @@ public class MyC45 extends AbstractClassifier {
                     listOfChild.add(child);
                 }
             }
+            for(int i=0;i<dataset.numClasses();i++) {
+                listOfNumClass.add(0);
+            }
+            tree.setListOfNumClass(listOfNumClass);
             tree.setListOfValue(listOfValue);
             tree.setListOfChild(listOfChild);
             tree.setListOfStringValue(listOfString);
@@ -337,8 +466,7 @@ public class MyC45 extends AbstractClassifier {
         
             
         for (int i = 0; i < attributes.size(); i++) {
-            if (attributes.size()==4) {
-                System.out.println(dataset);
+            if (attributes.size()==16) {
                 System.out.println(countGainRatio(dataset, attributes.get(i)));
                 System.out.println(dataset.attribute(i).name());
             }
@@ -354,7 +482,9 @@ public class MyC45 extends AbstractClassifier {
     // Edited
     public double countGainRatio(Instances dataset, int attribute) {
         double informationGain = countInformationGain(dataset, attribute);
+        System.out.println("IG "+informationGain);
         double splitInformation = countSplitInformation(dataset, attribute);
+        System.out.println("SI "+splitInformation);
         return informationGain/splitInformation;
     }
     
@@ -374,6 +504,9 @@ public class MyC45 extends AbstractClassifier {
         double gain = countEntropy(dataset);
         Instances[] split = seperateData(dataset, attribute);
         for (int i = 0; i < dataset.attribute(attribute).numValues(); i++) {
+            System.out.println("SPLIT "+i+" "+split[i].size());
+            System.out.println("WEIGHT "+i+" "+split[i].sumOfWeights());
+            
             if (split[i].sumOfWeights() > 0) {
                 gain -= (double) split[i].sumOfWeights() / (double) dataset.sumOfWeights() * countEntropy(split[i]);
             }
