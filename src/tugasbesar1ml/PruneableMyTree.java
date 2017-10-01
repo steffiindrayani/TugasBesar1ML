@@ -6,6 +6,7 @@
 package tugasbesar1ml;
 
 import java.util.ArrayList;
+import weka.core.Instances;
 
 /**
  *
@@ -15,17 +16,28 @@ public class PruneableMyTree {
     String attribute;
     boolean pruned;
     int numberOfValue;
-    ArrayList<Double> listOfValue;
     ArrayList<String> listOfStringValue;
-    ArrayList<MyTree> listOfChild;
+    ArrayList<PruneableMyTree> listOfChild;
+    ArrayList<Double> listOfAttributeWeight;
+    ArrayList<Double> listOfClassWeight;
+    ArrayList<Double> listOfClassPerAttributeWeight;
+    Instances localDataset;
+    ArrayList<Double> listOfValue;
+    
 
-    public PruneableMyTree() {
+    public PruneableMyTree(Instances dataset, String attribute) {
+        this.attribute = attribute;
+        this.listOfValue = new ArrayList<>();
+        this.listOfStringValue = new ArrayList<>();
+        this.listOfChild = new ArrayList<>();
+        this.listOfAttributeWeight = new ArrayList<>();
+        this.listOfClassWeight = new ArrayList<>();
+        this.listOfClassPerAttributeWeight = new ArrayList<>();
     }
     
     public PruneableMyTree(String attribute) {
         this.pruned = false;
         this.attribute = attribute;
-        this.listOfValue = new ArrayList<>();
         this.listOfStringValue = new ArrayList<>();
         this.listOfChild = new ArrayList<>();
     }
@@ -46,15 +58,15 @@ public class PruneableMyTree {
         this.numberOfValue = numberOfValue;
     }
 
+    public void setListOfStringValue(ArrayList<String> listOfStringValue) {
+        this.listOfStringValue = listOfStringValue;
+    }
+    
     public void setListOfValue(ArrayList<Double> listOfValue) {
         this.listOfValue = listOfValue;
     }
 
-    public void setListOfStringValue(ArrayList<String> listOfStringValue) {
-        this.listOfStringValue = listOfStringValue;
-    }
-
-    public void setListOfChild(ArrayList<MyTree> listOfChild) {
+    public void setListOfChild(ArrayList<PruneableMyTree> listOfChild) {
         this.listOfChild = listOfChild;
     }
 
@@ -69,31 +81,21 @@ public class PruneableMyTree {
     public ArrayList<Double> getListOfValue() {
         return listOfValue;
     }
-
+    
     public ArrayList<String> getListOfStringValue() {
         return listOfStringValue;
     }
 
-    public ArrayList<MyTree> getListOfChild() {
+    public ArrayList<PruneableMyTree> getListOfChild() {
         return listOfChild;
     }
     
-    public void addChild(MyTree child) {
+    public void addChild(PruneableMyTree child) {
         this.getListOfChild().add(child);
-    }
-    
-    public int getValueIndex(double value) {
-        return this.getListOfValue().indexOf(value);
     }
     
     public boolean isLeaf() {
         return this.getListOfChild().isEmpty();
-    }
-    
-    public MyTree getChildFromValue(double value) {
-        int index = this.getValueIndex(value);
-        MyTree child = this.getListOfChild().get(index);
-        return child;
     }
     
     public String getValueString() {
