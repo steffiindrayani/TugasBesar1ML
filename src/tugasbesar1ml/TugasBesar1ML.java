@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Scanner;
 import weka.classifiers.Evaluation;
 import weka.core.DenseInstance;
@@ -117,6 +118,11 @@ public class TugasBesar1ML {
     
     public static void main(String[] args) throws IOException, Exception {
         //Data Initialisation
+//        LinkedHashMap<String,Double> priorRule = new LinkedHashMap<String,Double>();
+//        priorRule.put("outlook",2.0);
+//        priorRule.put("windy",2.0);
+//        priorRule.put("class",2.0);
+//        System.out.println(priorRule);
         TugasBesar1ML newClassifier = new TugasBesar1ML();
         Instances data = newClassifier.loadData();
         data = newClassifier.removeAttribute(data);
@@ -131,19 +137,36 @@ public class TugasBesar1ML {
         //Instances testData = newData.testCV(folds, 0);
 
         //Build Classifier
-        MyId3 id3 = new MyId3();
-        id3.buildClassifier(trainingData);
+//        MyId3 id3 = new MyId3();
+//        id3.buildClassifier(trainingData);
+//        
+//        id3.getModel().printTree("", false);
+//        Evaluation eval = new Evaluation(trainingData);
+//        //eval.crossValidateModel(id3, trainingData, 10, new Random());
+//        eval.evaluateModel(id3, trainingData);
+//        System.out.println(eval.toSummaryString());
+//        
+//        //Classify Unseen Input Data
+//        Instance newInstance = makeInstance(trainingData);
+//        double cls = id3.classifyInstance(newInstance);
+//        System.out.println("Classification result : " + newInstance.classAttribute().value((int) cls));
         
-        id3.getModel().printTree("", false);
+        //Build Classifier
+        MyC45 C45 = new MyC45();
+        C45.buildClassifier(trainingData);
+        
+        //C45.getModel().printTree("", false);
         Evaluation eval = new Evaluation(trainingData);
-        //eval.crossValidateModel(id3, trainingData, 10, new Random());
-        eval.evaluateModel(id3, trainingData);
+        //eval.crossValidateModel(C45, trainingData, 10, new Random());
+        eval.evaluateModel(C45, trainingData);
         System.out.println(eval.toSummaryString());
         
         //Classify Unseen Input Data
         Instance newInstance = makeInstance(trainingData);
-        double cls = id3.classifyInstance(newInstance);
+        double cls = C45.classifyInstance(newInstance);
         System.out.println("Classification result : " + newInstance.classAttribute().value((int) cls));
     }
     
 }
+
+// /Applications/weka-3-8-0/data/weather.nominal.arff

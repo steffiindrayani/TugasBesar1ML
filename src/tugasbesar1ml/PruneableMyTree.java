@@ -16,30 +16,31 @@ public class PruneableMyTree {
     String attribute;
     boolean pruned;
     int numberOfValue;
+    double idxClass;
     ArrayList<String> listOfStringValue;
     ArrayList<PruneableMyTree> listOfChild;
-    ArrayList<Double> listOfAttributeWeight;
-    ArrayList<Double> listOfClassWeight;
-    ArrayList<Double> listOfClassPerAttributeWeight;
-    Instances localDataset;
+    int correctClass;
+    int falseClass;
+//    ArrayList<Double> listOfAttributeWeight;
+//    ArrayList<Double> listOfClassWeight;
+//    ArrayList<Double> listOfClassPerAttributeWeight;
+//    Instances localDataset;
     ArrayList<Double> listOfValue;
-    
-
-    public PruneableMyTree(Instances dataset, String attribute) {
-        this.attribute = attribute;
-        this.listOfValue = new ArrayList<>();
-        this.listOfStringValue = new ArrayList<>();
-        this.listOfChild = new ArrayList<>();
-        this.listOfAttributeWeight = new ArrayList<>();
-        this.listOfClassWeight = new ArrayList<>();
-        this.listOfClassPerAttributeWeight = new ArrayList<>();
-    }
+   
     
     public PruneableMyTree(String attribute) {
         this.pruned = false;
         this.attribute = attribute;
         this.listOfStringValue = new ArrayList<>();
+        this.listOfValue = new ArrayList<>();
         this.listOfChild = new ArrayList<>();
+        this.idxClass = -1;
+        this.correctClass = -1;
+        this.falseClass = -1;
+    }
+    
+    public void setIdxClass(double idx) {
+        this.idxClass = idx;
     }
     
     public boolean isPruned() {
@@ -98,6 +99,10 @@ public class PruneableMyTree {
         return this.getListOfChild().isEmpty();
     }
     
+    public double getIdxClass() {
+        return this.idxClass;
+    }
+    
     public String getValueString() {
         String value = new String();
         for (String val : this.getListOfStringValue()) {
@@ -108,6 +113,16 @@ public class PruneableMyTree {
             }
         }
         return value;
+    }
+    
+    public int getValueIndex(double value) {
+        return this.getListOfValue().indexOf(value);
+    }
+    
+    public PruneableMyTree getChildFromValue(double value) {
+        int index = this.getValueIndex(value);
+        PruneableMyTree child = this.getListOfChild().get(index);
+        return child;
     }
     
     public void printTree(String prefix, boolean isLeaf) {
